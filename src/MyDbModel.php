@@ -11,8 +11,12 @@ class MyDbModel {
     protected $queries = [
         "getAllUsers"=>"select * from test.`Users`;",
         "getAllPosts"=>"select * from test.`Posts`;",
-        "insertUser"=>NULL,
-        "insertPost"=>NULL,
+        "insertUser"=>"INSERT INTO test.`Users`
+(id, first_name, last_name, phone, email)
+VALUES(?, ?, ?, ?, ?);",
+        "insertPost"=>"INSERT INTO test.`Posts`
+(id, userId, title, body)
+VALUES(?, ?, ?, ?);",
         "createTableUsers"=>"CREATE TABLE test.Users (
 	id BIGINT UNSIGNED NOT NULL,
 	first_name varchar(255) NULL,
@@ -40,12 +44,20 @@ CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;",
         "fetchTables"=>"select TABLE_NAME from information_schema.TABLES
 where TABLE_SCHEMA = 'test';",
+        "getUsersCount"=>"select count(*) as n from test.`Users`;",
+        "getPostsCount"=>"select count(*) as n from test.`Posts`;",
         ];
     protected $queriesWithResult = [
         "getAllUsers"=>NULL,
         "getAllPosts"=>NULL,
         "fetchTables"=>NULL,
+        "getUsersCount"=>NULL,
+        "getPostsCount"=>NULL,
     ];//associative array for hash key lookup (seems faster)
+    protected $fieldsOrder = [
+        "Posts"=>["id", "userId", "title", "body"],
+        "Users"=>["id", "first_name", "last_name", "phone", "email"],
+    ];
     protected $tables = ["Users"=>NULL];
     protected $prepared=[];
 
@@ -117,11 +129,57 @@ where TABLE_SCHEMA = 'test';",
         }
     }
 
-    public function checkPosts() {
-
+    public function checkUsers() {
+        return (int)($this->execPrepared("getUsersCount",[])[0]["n"]);
     }
 
-    public function insertPosts() {
+    public function insertUsers(array $items) {
+        $this->insert($items,"insertUser","Users",True);
+    }
 
+    public function checkPosts() {
+        return (int)($this->execPrepared("getPostsCount",[])[0]["n"]);
+    }
+
+    public function insertPosts(array $items) {
+        $this->insert($items,"insertPost","Posts",False);
+    }
+
+    protected function insert($items,$key,$table,$generateId) {
+        $stmt = $this->prepared[$key];
+        $generatedId=0;
+        foreach ($items as $item) {
+            $generatedId+=1;//I'm aware about ++, it's a python style
+            $row=[];
+            foreach ($this->fieldsOrder[$table] as $field) {
+                if (!array_key_exists($field,$item)) {
+                    if (($field==="id")&&($generateId)) {
+                        $fieldValue = $generatedId;
+                    } else {
+                        $fieldValue = NULL;
+                    }
+                } else {
+                    $fieldValue = $item[$field];
+                }
+                if (is_a($stmt,"PDOStatement")) {
+                    $this->execPrepared($key,$row);
+                } elseif (is_a($stmt,"mysqli_stmt")) {
+                    $fieldTypes = implode("",
+                    array_map(function ($elem) {
+                        return is_a($elem,"int")?"i":"s";
+                    },$row)
+                    );
+                    $this->execPrepared($key,array_merge([$fieldTypes],$row));
+                }
+            }
+        }
+    }
+
+    public function getAllUsers() {
+        return $this->execPrepared("getAllUsers",[]);
+    }
+
+    public function getAllPosts() {
+        return $this->execPrepared("getAllPosts",[]);
     }
 }
