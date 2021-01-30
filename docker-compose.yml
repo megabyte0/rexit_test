@@ -1,0 +1,26 @@
+version: '3.1'
+
+services:
+  mysql:
+    image: 'mysql:8.0.23'
+    command: --default-authentication-plugin=mysql_native_password
+#    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+    ports:
+      - 33061:3306
+
+  myapp:
+    #tty: true
+    #image: 'php:7.4.14-fpm'
+    build:
+      context: .
+      dockerfile: Dockerfile
+#    environment:
+    depends_on:
+      - mysql
+    ports:
+      - 8000:8000
+    #volumes:
+    #  - ./:/usr/src/server
+    # privileged: true # Privileged mode could be required to run this container under Windows
