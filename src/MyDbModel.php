@@ -182,4 +182,26 @@ where TABLE_SCHEMA = 'test';",
     public function getAllPosts() {
         return $this->execPrepared("getAllPosts",[]);
     }
+
+    public function checkDatabaseAndTables() {
+        $this->execPrepared("createDatabase",[]);
+        $this->createNeededTables(
+            $this->checkTables()
+        );
+    }
+
+    public function checkAndFillData() {
+        $x=[
+            ["first_name"=> "Danielle", "last_name"=> "Morgan", "phone"=> "+18183951657", "email"=> "Danielle.Morgan.1992@gmail.com"],
+            ["first_name"=> "Adam", "last_name"=> "Ross", "phone"=> "+14473612924", "email"=> "ARoss72@gmail.com"],
+            ["first_name"=> "Jonathan", "last_name"=> "Ross", "phone"=> "+14503966208", "email"=> "Jonathan.Ross.1986@contextpreferencemeal.com"],
+            ["first_name"=> "Andrea", "last_name"=> "Murphy", "phone"=> "+13018365567", "email"=> "AMurphy87@televisionsinceimpression.org"],
+            ["first_name"=> "Ann", "last_name"=> "Allen", "phone"=> "+12364148540", "email"=> "Ann.Allen.1985@singlearoundperformance.edu"],
+            ["first_name"=> "Ashley", "last_name"=> "Davis", "phone"=> "+18723320888", "email"=> "Ashley.Davis.1972@uppertastescenedeliver.com"],
+            ["first_name"=> "Catherine", "last_name"=> "Ward", "phone"=> "+14429614651", "email"=> "Catherine.Ward.1958@gmail.com"],
+            ["first_name"=> "Ryan", "last_name"=> "Hill", "phone"=> "+18651889888", "email"=> "Ryan.Hill.1978@varychildopportunity.org"],
+            ["first_name"=> "Billy", "last_name"=> "Taylor", "phone"=> "+14454726451", "email"=> "Billy.Taylor.1993@everywhereflightcross.edu"],
+            ["first_name"=> "Ruth", "last_name"=> "Murphy", "phone"=> "+12018748233", "email"=> "RMurphy92@solveexactexamination.com"],
+            ];
+    }
 }

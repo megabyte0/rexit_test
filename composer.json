@@ -1,6 +1,13 @@
 {
   "autoload": {
-    "psr-4": {"Server\\": "src/"}
+    "psr-4": {
+      "Server\\": "src/",
+      "Names\\": "src/names",
+      "Words\\": "src/words",
+      "Phone\\": "src/phone",
+      "Person\\": "src/person",
+      "Email\\": "src/email"
+    }
   },
   "require": {
     "ext-mysqli": "*",
