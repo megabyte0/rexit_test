@@ -2,7 +2,146 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Test</title>
+    <script type="text/javascript">//https://stackoverflow.com/a/8567149
+    function loadXMLDoc(url, method, data, callback) {
+        var xmlhttp = new XMLHttpRequest();
+
+        xmlhttp.onreadystatechange = function () {
+            if (xmlhttp.readyState == XMLHttpRequest.DONE) {   // XMLHttpRequest.DONE == 4
+                if ([200,204].some(x=>xmlhttp.status ==x) ) {
+                    console.log(url,xmlhttp.status,xmlhttp.responseText)
+                    callback(xmlhttp.responseText);
+                } else if (xmlhttp.status == 400) {
+                    console.log('There was an error 400');
+                } else {
+                    console.log('something else other than 200 was returned: ' + xmlhttp.status);
+                }
+            }
+        };
+
+        xmlhttp.open(method || "GET", url, true);
+        if (data) {
+            xmlhttp.send(JSON.stringify(data));
+        } else {
+            xmlhttp.send();
+        }
+
+    }
+
+    function get(url, method, callback) {
+        loadXMLDoc(url, method || "GET", null, function (data) {
+            if (callback) {
+                callback(data && data !== '' && JSON.parse(data));
+            }
+        });
+    }
+
+    const onLoad = function () {
+        get('http://localhost:8000/api/data','GET',renderMain);
+        //renderMain();
+    }
+
+    function renderMain(data) {
+        const fieldsOrder = {
+            "Users": ["id", "first_name", "last_name", "phone", "email"],
+            "Posts": ["id", "userId", "title", "body"],
+        };
+        const columnSizes = {
+            "id": [1, 1],
+            "first_name": [5, 2],
+            "last_name": [6, 2],
+            "phone": [12, 2],
+            "email": [12, 4],
+            "posts": [12, 1]
+        };
+        var dataMapped=Object.values(data).map(function (item) {
+            var fields = fieldsOrder["Users"].concat(["posts"]).map(function(field) {
+                return {"tag":"div",
+                    "class":("col-"+columnSizes[field][0]+
+                        " col-lg-"+columnSizes[field][1]),
+                    0:[field!=="posts"?item[field].toString():
+                        {"tag":"a","href":"javascript:showPosts("+item["id"]+");",
+                        0:["Posts"]}]
+                }
+            })
+            return {"tag":"div","class":"row",0:fields};
+        });
+        document.getElementsByTagName("body")[0].appendChild(
+            render(
+                {"tag": "div", "class": "container", 0: //[{"tag": "p", 0: ["test"]}]
+                    dataMapped
+                }
+            )
+        );
+    }
+
+    function showPosts(id) {
+
+    }
+
+    function limitByCharsNum(s,n,append="…") {
+        //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split#splitting_with_a_regexp_to_include_parts_of_the_separator_in_the_result
+        var charsCount = 0;
+        var res = [];
+        var stop = false;
+        s.split(/(\s+)/).forEach(function (item) {
+            if (stop) {
+                return;
+            }
+            if (charsCount+(item.length)>n) {
+                stop = true;
+                return;
+            }
+            res.push(item);
+            charsCount+=item.length;
+        })
+        if (stop) {
+            res.push(append);
+        }
+        return res.join("");
+    }
+
+    function render(data) {
+        //console.log(data,typeof data);
+        if (data instanceof Array) {
+            return data.map(render);
+        }
+        if ((typeof data === "string") || (data instanceof String)) { //https://stackoverflow.com/a/9436948
+            return document.createTextNode(data);
+        }
+        if (data instanceof Object) {
+            var tag = data["tag"];
+            var res = document.createElement(tag);
+            Object.keys(data).forEach(function (key) {
+                if (key==="tag") {
+                    return true;
+                }
+                var item = data[key];
+                if ((typeof item === "string") || (item instanceof String)) {
+                    res.setAttribute(key,item);
+                }
+                if (item instanceof Array) {
+                    var children = render(item);
+                    //console.log(children);
+                    children.forEach(function (child) {
+                        res.appendChild(child);
+                    });
+                }
+            })
+            return res;
+        }
+    }
+
+    //http://xahlee.info/js/js_scritping_svg_basics.html
+    if (window.addEventListener) {
+        window.addEventListener('load', onLoad, false);
+    } else { // IE
+        window.attachEvent('onload', onLoad);
+    }
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
 </head>
 <body>
 

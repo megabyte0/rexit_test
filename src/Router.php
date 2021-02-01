@@ -56,6 +56,7 @@ class Router {
             $data = gzencode($data);
         }
         header("Content-Length: ".(strlen($data)));
+        header("Access-Control-Allow-Origin: *");
         echo ($data);
 
     }
