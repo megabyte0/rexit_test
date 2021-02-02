@@ -39,11 +39,17 @@
     }
 
     const onLoad = function () {
-        get('http://localhost:8000/api/data','GET',renderMain);
+        const dataUrl = (
+            //'http://localhost:8000/api/data'
+            '/api/data'
+        );
+        get(dataUrl,'GET',renderMain);
         //renderMain();
     }
 
     function renderMain(data) {
+        window.data = data;
+        buildFilters();
         const fieldsOrder = {
             "Users": ["id", "first_name", "last_name", "phone", "email"],
             "Posts": ["id", "userId", "title", "body"],
@@ -56,25 +62,86 @@
             "email": [12, 4],
             "posts": [12, 1]
         };
-        var dataMapped=Object.values(data).map(function (item) {
-            var fields = fieldsOrder["Users"].concat(["posts"]).map(function(field) {
-                return {"tag":"div",
-                    "class":("col-"+columnSizes[field][0]+
-                        " col-lg-"+columnSizes[field][1]),
-                    0:[field!=="posts"?item[field].toString():
-                        {"tag":"a","href":"javascript:showPosts("+item["id"]+");",
-                        0:["Posts"]}]
+        const captionTitles = {
+            "id": ["ID", false],
+            "first_name": ["First name", true],
+            "last_name": ["Last name", true],
+            "phone": ["Phone", false],
+            "email": ["E-mail", false],
+            "posts": ["", false]
+        };
+        const column = function (item,f,additionalClass="") {
+            return function (field) {
+                return {
+                    "tag": "div",
+                    "class": ("col-" + columnSizes[field][0] +
+                        " col-lg-" + columnSizes[field][1]
+                        + (additionalClass===""?"":
+                            " "+additionalClass)
+                    ),
+                    0: [f(item,field)]
                 }
-            })
-            return {"tag":"div","class":"row",0:fields};
+            };
+        };
+        const fieldsOrderWithPosts = fieldsOrder["Users"].concat(["posts"]);
+        var caption = {"tag":"div","class":"row",
+            0:fieldsOrderWithPosts.map(column(
+                null,(item,field)=>captionTitles[field][0],"fw-bold"))};
+        var filters = {"tag":"div","class":"row",
+            0:fieldsOrderWithPosts.map(column(
+                null,(item,field)=>!captionTitles[field][1]?"":{
+                    "tag":"input","type":"text","name":field,
+                    "style":"width:100%;"//todo:class
+                }))};
+        //console.log(caption);
+        var dataMapped=Object.values(data).map(function (item) {
+            var fields = fieldsOrderWithPosts.map(
+                column(item,function (item,field) {
+                    return field !== "posts" ? item[field].toString() :
+                        {
+                            "tag": "a", "href": "javascript:showPosts(" + item["id"] + ");",
+                            0: ["Posts"]
+                        };
+                })
+            )
+            return {"tag":"div","class":"row",0:fields,"id":item["id"]};
         });
         document.getElementsByTagName("body")[0].appendChild(
             render(
                 {"tag": "div", "class": "container", 0: //[{"tag": "p", 0: ["test"]}]
-                    dataMapped
+                    [caption,filters],1:dataMapped
                 }
             )
         );
+        //https://stackoverflow.com/a/19324739
+        [...document.getElementsByTagName("input")].forEach(input=>input.addEventListener(
+            //https://stackoverflow.com/a/19405157
+            "input",onInput
+        ));
+    }
+
+    function onInput(event) {
+        console.log(event.target.value,event);
+        var field = event.target.name;
+        var value = event.target.value;
+        Object.keys(data).forEach(function (id) {
+            var item = data[id];
+            filters[id][field]=item[field].toLowerCase().includes(value.toLowerCase());
+            if (Object.values(filters[id]).every(x=>x)) {
+                document.getElementById(id).classList.remove("d-none");
+            } else {
+                document.getElementById(id).classList.add("d-none");
+            }
+        });
+    }
+
+    var filters={};
+
+    function buildFilters() {
+        Object.keys(data).forEach(function (id) {
+            //var item = data[id];
+            filters[id] = {"first_name":true,"last_name":true};
+        });
     }
 
     function showPosts(id) {
