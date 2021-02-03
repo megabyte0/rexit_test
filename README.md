@@ -53,3 +53,15 @@ The rest goes in Russian.
 
 Что с Namespace'ами?  
 Я просто не умею их правильно использовать пока что, при написании с нуля.
+
+На фронте больше обработки данных, чем на бэке, ты что, фронт-эндщик? В_курсе, что так не должно быть?  
+Так получилось, да и как бы задумывалось сделать именно такое api. 
+Нет, я бэкер, в том плане, что фронт-энд я пишу раза в 2-3 медленнее, особенно вёрстку.  
+В курсе.
+
+### Screenshots
+![mobile, initial](https://i.imgur.com/wMZajmU.png) 
+![mobile, both filters](https://i.imgur.com/I83ELY7.png)
+![mobile, showing posts](https://i.imgur.com/QFEF9Dl.png) 
+![mobile, posts next page](https://i.imgur.com/HS5rJVh.png)  
+![desktop, showing posts](https://i.imgur.com/RO37Ept.png)
