@@ -99,17 +99,52 @@
                 column(item,function (item,field) {
                     return field !== "posts" ? item[field].toString() :
                         {
-                            "tag": "a", "href": "javascript:showPosts(" + item["id"] + ");",
+                            "tag": "a", "href": "javascript:showPosts(this," + item["id"] + ");",
                             0: ["Posts"]
                         };
                 })
-            )
-            return {"tag":"div","class":"row",0:fields,"id":item["id"]};
+            );
+            var posts = Object.values(item["Posts"]).map(function (post) {
+                const fAndAddClassByField = {
+                    "title":{"f":x=>x,"addClass":" fw-bold"},
+                    "body":{"f":x=>limitByCharsNum(x,80),"addClass":""}
+                };
+                const postDiv = function (post) {
+                    return function (field) {
+                        var fAndAddClass = fAndAddClassByField[field],
+                            addClass = fAndAddClass["addClass"],
+                            f = fAndAddClass["f"];
+                        return {
+                            "tag": "div", "class": "row"+addClass, 0: [
+                                {"tag": "div", "class": "col-12", 0: [f(post[field])]}
+                            ]
+                        }
+
+                    }
+                }
+                return {
+                    "tag": "div", "class": "col-12 col-lg-4 post",
+                    0: Object.keys(fAndAddClassByField).map(postDiv(post)),
+                    "id": "post_"+post["id"]
+                }
+            });
+            return [
+                {"tag":"div","class":"row",0:fields,"id":item["id"]},
+                {"tag":"div","class":"row",0:posts,"id":"posts_"+item["id"]}
+            ];
         });
+        const flatten = function (item,res=[]) {
+            if (item instanceof Array) {
+                item.forEach(elem=>flatten(elem,res));
+            } else {
+                res.push(item);
+            }
+            return res;
+        }
         document.getElementsByTagName("body")[0].appendChild(
             render(
                 {"tag": "div", "class": "container", 0: //[{"tag": "p", 0: ["test"]}]
-                    [caption,filters],1:dataMapped
+                    [caption,filters],1:flatten(dataMapped)
                 }
             )
         );
@@ -121,13 +156,14 @@
     }
 
     function onInput(event) {
-        console.log(event.target.value,event);
+        //console.log(event.target.value,event);
         var field = event.target.name;
         var value = event.target.value;
         Object.keys(data).forEach(function (id) {
             var item = data[id];
             filters[id][field]=item[field].toLowerCase().includes(value.toLowerCase());
             if (Object.values(filters[id]).every(x=>x)) {
+                //https://stackoverflow.com/a/196038
                 document.getElementById(id).classList.remove("d-none");
             } else {
                 document.getElementById(id).classList.add("d-none");
@@ -144,7 +180,7 @@
         });
     }
 
-    function showPosts(id) {
+    function showPosts(elem,id) {
 
     }
 
@@ -209,6 +245,22 @@
     }
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <style>
+        .post_title {
+            border-top: 1px solid #888;
+            border-left: 1px solid #888;
+            border-right: 1px solid #888;
+        }
+        .post_body {
+            border-bottom: 1px solid #888;
+            border-left: 1px solid #888;
+            border-right: 1px solid #888;
+        }
+        .post {
+            border: 1px solid #888;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
 

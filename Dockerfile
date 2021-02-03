@@ -16,4 +16,4 @@ RUN php -r "unlink('composer-setup.php');"
 COPY . /usr/src/server
 RUN composer dump-autoload
 #EXPOSE 8000
-CMD [ "php", "-S", "0.0.0.0:8000", "./hello.php" ]
+CMD [ "php", "-S", "0.0.0.0:8000", "./router.php" ]

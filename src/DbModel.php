@@ -16,13 +16,9 @@ class DbModel {
 
     function __construct(&$connection) {
         $this->connection = $connection;
-//        if (is_a($connection,"PDO")) {
         foreach ($this->queries as $key => $query) {
             $this->prepared[$key] = $this->connection->prepare($query);
         }
-//        } elseif (is_a($connection,"mysqli")) {
-//
-//        }
     }
 
     public function execPrepared($key, $params) {
@@ -35,9 +31,6 @@ class DbModel {
                 return $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         } elseif (is_a($stmt, "mysqli_stmt")) {
-//            return (new MysqliDbWrapper($this->connection))->preparedSelect(
-//                $this->queries[$key],$params
-//            );
             if (count($params)) {
                 call_user_func_array(array($stmt, "bind_param"), $params);
             }

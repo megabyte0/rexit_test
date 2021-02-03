@@ -75,7 +75,6 @@ where TABLE_SCHEMA = 'test';",
                 continue;
             $tablesPresent[$record["TABLE_NAME"]] = NULL;
         }
-        //$this->createNeededTables($tablesPresent);
         return $tablesPresent;
     }
 
@@ -91,16 +90,8 @@ where TABLE_SCHEMA = 'test';",
         }
     }
 
-    public function checkUsers() {
-        return (int)($this->execPrepared("getUsersCount", [])[0]["n"]);
-    }
-
     public function insertUsers(array $items) {
         $this->insert($items, "insertUser", "Users", True);
-    }
-
-    public function checkPosts() {
-        return (int)($this->execPrepared("getPostsCount", [])[0]["n"]);
     }
 
     public function insertPosts(array $items) {
