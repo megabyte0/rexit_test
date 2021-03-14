@@ -40,14 +40,347 @@
 
     const onLoad = function () {
         const dataUrl = (
-            //'http://localhost:8000/api/data'
-            '/api/data'
+            'http://localhost:8001/api/data'
+            //'/api/data'
         );
         get(dataUrl, 'GET', renderMain);
         //renderMain();
     }
 
+    var data, rendered, productsHashMap={};
+    const productSortValues = {
+        "picture":function (item) {return item["picture"];},
+        "name":function (item) {return item["name"];},
+        "value":function (item) {return item["value"];},
+        "timestamp":function (item) {return item["timestamp"];},
+        "merchant_name":function (item) {return item["merchant_name"];},
+        "reviews_length":function (item) {return item["reviews"].length;},
+    };
+
+    function showRenderedProducts(header = true) {
+        var productsDiv = document.getElementById("products");
+        // https://stackoverflow.com/a/683429
+        while (
+            //productsDiv.hasChildNodes()
+            productsDiv.childNodes.length > 1
+            ) {
+            productsDiv.removeChild(productsDiv.lastChild);
+        }
+
+        if (header) {
+            productsDiv.appendChild(renderProductsHeader());
+        }
+        rendered.forEach(function (renderedItem) {
+            productsDiv.appendChild(renderedItem);
+        });
+        attachProductHeaderClicks();
+    }
+
     function renderMain(data) {
+        window.data = data;
+        data.forEach(function (item) {
+            productsHashMap[item["id"]] = item;
+        })
+        rendered = renderData(data);
+        showRenderedProducts();
+        attachTabClicks();
+    }
+
+    function timestampToReadable(timestamp) {
+        var date = new Date(timestamp * 1000);
+        const pad = function (n) {
+            return (n.toString()).padStart(2, "0");
+        };
+        return pad(date.getDate()) + "." +
+            pad(date.getMonth() + 1) + "." +
+            date.getFullYear().toString() + " " +
+            pad(date.getHours()) + ":" +
+            pad(date.getMinutes()) + ":" +
+            pad(date.getSeconds());
+    }
+
+    const productFields = {
+        "picture":[1,function (item) {
+            return {"tag":"img","src":item["picture"],"class":"_40x40"};
+        },"","Image"],
+        "name":[6,function (item) {
+            return {
+                "tag": "a", "href": "javascript:showProduct('"+item["id"]+"')",
+                "children": [item["name"]]
+            };
+        },"border-start","Name"],
+        // "value":[1,function (item) {
+        //     return "$"+item["value"];
+        // }],
+        "value":[1,function (item) {
+            return "$"+item["value"].toFixed(2);
+        },"border-start","Price"],
+        "timestamp":[1,function (item) {
+            return timestampToReadable(item["timestamp"]);
+        },"border-start","Date add"],
+        "merchant_name":[2,function (item) {
+            return item["merchant_name"];
+        },"border-start text-break","Name add"],
+        "reviews_length":[1,function (item) {
+            return item["reviews"].length.toString();
+        },"border-start","#Reviews"],
+    };
+
+    function renderProductsOrReviews(fields) {
+        return function (
+            rowStyleAdd, rowIdF, colStyleAdd, childF,
+            colIdF = function (field) {return "";}) {
+            return function (item) {
+                return {
+                    "tag": "div", "class": "row border" + rowStyleAdd, "id": rowIdF(item),
+                    "children": Object.keys(fields).map(
+                        function (field) {
+                            var f = fields[field];
+                            var res = {
+                                "tag": "div", "class": (f[2] + (f[2] === "" ? "" : " ") + "col-" + f[0]) +
+                                    colStyleAdd,
+                                "children": [
+                                    childF(f, item)
+                                ]
+                            };
+                            var colId = colIdF(field);
+                            if (colId !== "") {
+                                res["id"] = colId;
+                            }
+                            return res;
+                        }
+                    )
+                }
+            };
+        }
+    }
+
+    var renderProductsInner = renderProductsOrReviews(productFields);
+
+    function renderData(data,renderFunction=renderProductsInner) {
+        const rowStyleAdd = " border-top-0",
+            idF = function (item) {return item["id"];},
+            colStyleAdd = "",
+            childF = function(f,item) {return f[1](item);};
+        // [ "name", "picture", "value", "`timestamp`", "merchant_name", "id", "reviews" ]
+        return render(data.map(
+            renderFunction(rowStyleAdd, idF, colStyleAdd, childF)
+        ));
+    }
+
+    function renderProductsHeader() {
+        return render(
+            renderProductsInner(
+                "",function (item) {return "products_header";},
+                " fw-bold text-center",function (f,item) {return f[3];},
+                function (field) {return "products_header_"+field;}
+            )()
+        );
+    }
+
+    function renderReviewsHeader() {
+        return render(
+            renderReviewsInner(
+                "",function (item) {return "reviews_header";},
+                " fw-bold text-center",function (f,item) {return f[3];}//,
+                //function (field) {return "products_header_"+field;}
+            )()
+        );
+    }
+
+    function sortProductsInner(key, asc = 1) {
+        rendered.sort(function (a,b) {
+            var aValue = productSortValues[key](productsHashMap[a.id]),
+                bValue = productSortValues[key](productsHashMap[b.id]);
+            return asc * (aValue < bValue ? -1 : aValue > bValue ? 1 : 0);
+        });
+        showRenderedProducts(false);
+    }
+
+    var sortingProducts = ["",1];
+
+    function sortProducts(key) {
+        //console.log("sortProducts",key);
+        if (sortingProducts[0]!==key) {
+            sortingProducts = [key,1];
+        } else {
+            sortingProducts[1]*=-1;
+        }
+        const arrows = {"1":"&#8593;","-1":"&#8595;"};
+        Object.keys(productSortValues).forEach(function (field) {
+            document.getElementById("products_header_"+field)
+            .innerHTML = productFields[field][3]+(
+                field !== key?"":arrows[sortingProducts[1]]
+            );
+        });
+        //var headerColDiv = document.getElementById("products_header_"+key);
+        sortProductsInner(...sortingProducts);
+    }
+
+    function sortProductsClick(event) {
+        var field = event.target.id.slice("products_header_".length);
+        //console.log("sortProductsClick",field);
+        sortProducts(field);
+    }
+
+    function attachProductHeaderClicks() {
+        Object.keys(productSortValues).forEach(function (field) {
+            document.getElementById("products_header_"+field).addEventListener(
+                "click",sortProductsClick
+            );
+        });
+    }
+
+    function tabClick(event) {
+        var tabKey = event.target.id.slice(0,-4);
+        //console.log("tabClick",tabKey);
+        showTab(tabKey);
+    }
+
+    function attachTabClicks() {
+        ["products","reviews"].forEach(function (tabKey) {
+            document.getElementById(tabKey+"_tab").addEventListener(
+                "click",tabClick
+            );
+        });
+    }
+
+    const reviewFields = {
+        'user_name':[2,function (item) {
+            return item["user_name"];
+        },"","User name"],
+        'rating':[1,function (item) {
+            return item["rating"].toString();
+        },"border-start","Rating"],
+        'comment':[8,function (item) {
+            return item["comment"];
+        },"border-start","Comment"],
+        'timestamp':[1,function (item) {
+            return timestampToReadable(item["timestamp"]);
+        },"border-start","Time"],
+    };
+
+    var renderReviewsInner = renderProductsOrReviews(reviewFields);
+
+    function renderReviews(reviews) {
+        return renderData(reviews,
+            //renderProductsOrReviews(reviewFields)
+            renderReviewsInner
+        )
+    }
+
+    function renderProduct(id) {
+        var reviewsCount = 0, reviewsSum = 0;
+        productsHashMap[id]["reviews"].forEach(function (item){
+            reviewsCount += 1;
+            reviewsSum += item["rating"];
+        });
+        return {
+            "tag": "div", "class": "row", "children": [
+                {
+                    "tag": "div", "class": "col-auto", "children": [
+                        {"tag": "img", "src": productsHashMap[id]["picture"]}
+                    ]
+                },
+                {
+                    "tag": "div", "class": "col", "children": [
+                        {
+                            "tag": "div", "class": "row", "children": [
+                                {
+                                    "tag": "div", "class": "col-auto", "children": [
+                                        renderStars(reviewsCount===0?0:Math.floor(reviewsSum/reviewsCount))
+                                    ]
+                                },
+                                {
+                                    "tag": "div", "class": "col-auto", "children": [
+                                        "("+(
+                                            reviewsCount===0?"No reviews":
+                                                (reviewsSum/reviewsCount).toFixed(3)
+                                        )+")"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "tag": "div", "class": "row", "children": [
+                                {
+                                    "tag": "div", "class": "col-auto", "children": [
+                                        productsHashMap[id]["name"]
+                                    ]
+                                },
+
+                            ]
+                        },
+                    ]
+                },
+            ]
+        };
+    }
+
+    function starSVG(odd,rated) {
+        // the entire svg and styles were taken as is from movielens.org
+        return {
+        "tag":"svg", "class":"star", "viewBox":"0 0 24 24", "xmlns":"http://www.w3.org/2000/svg",
+             "style": "width: 24px; height: 24px; margin-left: "+(odd?"0":"-12")+"px;",
+                 "children": [
+                     {"tag":"path", "class":"star-shape"+(rated?" rated":""),
+                         "xmlns":"http://www.w3.org/2000/svg",
+                         "d":"M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"}
+                     ]
+        };
+    }
+
+    function renderStars(n) {
+        return {
+            "tag":"div", "class":"five-stars", "style":"height: 26px;",
+            // https://stackoverflow.com/a/10050831
+            "children": [...Array(10).keys()].map(function (i) {
+                var odd = i%2 === 0;
+                return {
+                    "tag":"div", "class":"star-box",
+                    "style":"width: "+(odd?"12":"14")+"px; height: 26px;",
+                    "children":[starSVG(odd,i<n)]
+                }
+            })
+        }
+    }
+
+    function showProduct(id) {
+        showTab("reviews");
+        var reviewsDiv = document.getElementById("reviews");
+        while (reviewsDiv.hasChildNodes()) {
+            reviewsDiv.removeChild(reviewsDiv.lastChild);
+        }
+        reviewsDiv.appendChild(render(renderProduct(id)));
+        reviewsDiv.appendChild(renderReviewsHeader());
+        var reviewsRendered = renderReviews(productsHashMap[id]["reviews"]);
+        reviewsRendered.forEach(function (item) {
+            reviewsDiv.appendChild(item);
+        })
+        //reviewsDiv.appendChild(render(renderStars(id)));
+    }
+
+    function showTab(key) {
+        const tabIds=["products","reviews"];
+        tabIds.forEach(function (tabId) {
+            var tab = document.getElementById(tabId);
+            if (tabId === key) {
+                tab.classList.remove("d-none");
+            } else {
+                tab.classList.add("d-none");
+            }
+        });
+        tabIds.forEach(function (tabId) {
+            var tabHeader = document.getElementById(tabId+"_tab");
+            if (tabId === key) {
+                tabHeader.classList.add("tab-active");
+            } else {
+                tabHeader.classList.remove("tab-active");
+            }
+        })
+    }
+
+    function renderMain_(data) {
         window.data = data;
         buildFilters();
         const fieldsOrder = {
@@ -292,7 +625,12 @@
         }
         if (data instanceof Object) {
             var tag = data["tag"];
-            var res = document.createElement(tag);
+            var res;
+            if (data["xmlns"] === undefined) {
+                res = document.createElement(tag);
+            } else {
+                res = document.createElementNS(data["xmlns"],tag);
+            }
             Object.keys(data).forEach(function (key) {
                 if (key === "tag") {
                     return true;
@@ -320,8 +658,8 @@
         window.attachEvent('onload', onLoad);
     }
     </script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
     <style>
         .post_title {
             border-top: 1px solid #888;
@@ -339,9 +677,78 @@
             border: 1px solid #888;
             border-radius: 5px;
         }
+
+        #tabs ul {
+            list-style-type: none;
+            padding:0;
+            margin:0;
+        }
+        /*#tabs ul li {
+            border: 1px solid gray;
+            border-bottom: none;
+        }
+        #tabs ul li.no-border {
+            border: none;
+        }*/
+        body {
+            margin:0;
+            padding:0;
+        }
+        #container {
+            margin: 8px 8px 8px 8px;
+        }
+        #products, #reviews {
+            padding: 8px 8px 8px 8px;
+        }
+        ._40x40 {
+            max-height: 40px;
+            max-width: 40px;
+        }
+        .overflow-hidden {
+            overflow: hidden;
+        }
+        /* the entire svg and styles were taken as is from movielens.org */
+        .star-box {
+            display: inline-block;
+            overflow: hidden;
+        }
+        .star-shape.rated {
+            fill: #f06624;
+        }
+        .star-shape {
+            fill: #bbb;
+            stroke: #808080;
+        }
+        .five-stars {
+            cursor: pointer;
+        }
+        /* movielens styles end */
+        .tab-header {
+            cursor: pointer;
+        }
+        .tab-active {
+            background-color: #dee2e6;/* https://getbootstrap.com/docs/5.0/utilities/background/#variables $gray-300*/
+        }
+        #reviews_header {
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
-
+<div id="container">
+    <div id="tabs">
+        <ul class="row">
+            <li id="products_tab"
+                class="text-center border border-bottom-0 col-lg-2 col-5 rounded-top tab-header tab-active">Products</li>
+            <li id="reviews_tab"
+                class="text-center border border-bottom-0 col-lg-2 col-5 rounded-top tab-header">Reviews</li>
+            <li class="d-none d-lg-block col-0 col-lg-6"></li>
+            <li class="text-center border border-bottom-0 col-1 rounded-top">RU</li>
+            <li class="text-center border border-bottom-0 col-1 rounded-top">EN</li>
+        </ul>
+    </div>
+    <div id="products" class="border-top"></div>
+    <div id="reviews" class="border-top d-none"></div>
+</div>
 </body>
 </html>
