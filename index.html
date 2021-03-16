@@ -38,6 +38,14 @@
         });
     }
 
+    function post(url, method, data, callback) {
+        loadXMLDoc(url, method || "POST", data, function (data) {
+            if (callback) {
+                callback(data && data !== '' && JSON.parse(data));
+            }
+        });
+    }
+
     const onLoad = function () {
         const dataUrl = (
             'http://localhost:8001/api/data'
@@ -157,9 +165,9 @@
 
     var renderProductsInner = renderProductsOrReviews(productFields);
 
-    function renderData(data,renderFunction=renderProductsInner) {
+    function renderData(data,renderFunction=renderProductsInner,idPrefix="p") {
         const rowStyleAdd = " border-top-0",
-            idF = function (item) {return item["id"];},
+            idF = function (item) {return idPrefix+item["id"];},
             colStyleAdd = "",
             childF = function(f,item) {return f[1](item);};
         // [ "name", "picture", "value", "`timestamp`", "merchant_name", "id", "reviews" ]
@@ -190,8 +198,8 @@
 
     function sortProductsInner(key, asc = 1) {
         rendered.sort(function (a,b) {
-            var aValue = productSortValues[key](productsHashMap[a.id]),
-                bValue = productSortValues[key](productsHashMap[b.id]);
+            var aValue = productSortValues[key](productsHashMap[a.id.slice(1)]),
+                bValue = productSortValues[key](productsHashMap[b.id.slice(1)]);
             return asc * (aValue < bValue ? -1 : aValue > bValue ? 1 : 0);
         });
         showRenderedProducts(false);
@@ -265,7 +273,8 @@
     function renderReviews(reviews) {
         return renderData(reviews,
             //renderProductsOrReviews(reviewFields)
-            renderReviewsInner
+            renderReviewsInner,
+            "r"
         )
     }
 
@@ -378,241 +387,6 @@
                 tabHeader.classList.remove("tab-active");
             }
         })
-    }
-
-    function renderMain_(data) {
-        window.data = data;
-        buildFilters();
-        const fieldsOrder = {
-            "Users": ["id", "first_name", "last_name", "phone", "email"],
-            "Posts": ["id", "userId", "title", "body"],
-        };
-        const columnSizes = {
-            "id": [1, 1],
-            "first_name": [5, 2],
-            "last_name": [6, 2],
-            "phone": [12, 2],
-            "email": [12, 4],
-            "posts": [12, 1]
-        };
-        const captionTitles = {
-            "id": ["ID", false, ""],
-            "first_name": ["First name", true, ""],
-            "last_name": ["Last name", true, ""],
-            "phone": ["Phone", false, " d-none d-lg-block"],
-            "email": ["E-mail", false, " d-none d-lg-block"],
-            "posts": ["", false, " d-none d-lg-block"]
-        };
-        const column = function (item, f, additionalClass = x=>"") {
-            return function (field) {
-                return {
-                    "tag": "div",
-                    "class": ("col-" + columnSizes[field][0] +
-                        " col-lg-" + columnSizes[field][1]
-                        + (additionalClass(field) === "" ? "" :
-                            " " + additionalClass(field))
-                    ),
-                    0: [f(item, field)]
-                }
-            };
-        };
-        const fieldsOrderWithPosts = fieldsOrder["Users"].concat(["posts"]);
-        var caption = {
-            "tag": "div", "class": "row",
-            0: fieldsOrderWithPosts.map(column(
-                null, (item, field) => captionTitles[field][0],
-                field => "fw-bold" + captionTitles[field][2]))
-        };
-        var filters = {
-            "tag": "div", "class": "row",
-            0: fieldsOrderWithPosts.map(column(
-                null, (item, field) => !captionTitles[field][1] ? "" : {
-                    "tag": "input", "type": "text", "name": field,
-                    "style": "width:100%;"//todo:class
-                }))
-        };
-        //console.log(caption);
-        var dataMapped = Object.values(data).map(function (item) {
-            var fields = fieldsOrderWithPosts.map(
-                column(item, function (item, field) {
-                    return field !== "posts" ? item[field].toString() :
-                        {
-                            "tag": "a", "href": "javascript:showPosts(" + item["id"] + ");",
-                            0: ["Posts"]
-                        };
-                })
-            );
-            var posts = Object.values(item["Posts"]).map(function (post) {
-                const fAndAddClassByField = {
-                    "title": {"f": x => x, "addClass": " fw-bold"},
-                    "body": {"f": x => limitByCharsNum(x, 80), "addClass": ""}
-                };
-                const postDiv = function (post) {
-                    return function (field) {
-                        var fAndAddClass = fAndAddClassByField[field],
-                            addClass = fAndAddClass["addClass"],
-                            f = fAndAddClass["f"];
-                        return {
-                            "tag": "div", "class": "row" + addClass, 0: [
-                                {"tag": "div", "class": "col-12", 0: [f(post[field])]}
-                            ]
-                        }
-
-                    }
-                }
-                return {
-                    "tag": "div", "class": "col-12 col-lg-4 post",
-                    0: Object.keys(fAndAddClassByField).map(postDiv(post)),
-                    "id": "post_" + post["id"]
-                }
-            });
-            return [
-                {"tag": "div", "class": "row", 0: fields, "id": item["id"]},
-                {
-                    "tag": "div", "class": "row d-none", 0: posts, "id": "posts_" + item["id"],
-                    1: [{
-                        "tag": "div",
-                        "class": "col-12 col-lg-4 align-items-center d-flex justify-content-center",
-                        "id": "more_" + item["id"],
-                        0: [{
-                            "tag": "div", "class": "d-inline-flex",
-                            0: [
-                                {
-                                    "tag": "a", "href": "javascript:morePosts(" + item["id"] + ");",
-                                    0: ["More >>>"]
-                                }
-                            ]
-                        }]
-                    }]
-                }
-            ];
-        });
-        const flatten = function (item, res = []) {
-            if (item instanceof Array) {
-                item.forEach(elem => flatten(elem, res));
-            } else {
-                res.push(item);
-            }
-            return res;
-        }
-        document.getElementsByTagName("body")[0].appendChild(
-            render(
-                {
-                    "tag": "div", "class": "container", 0: //[{"tag": "p", 0: ["test"]}]
-                        [caption, filters], 1: flatten(dataMapped)
-                }
-            )
-        );
-        //https://stackoverflow.com/a/19324739
-        [...document.getElementsByTagName("input")].forEach(input => input.addEventListener(
-            //https://stackoverflow.com/a/19405157
-            "input", onInput
-        ));
-    }
-
-    function onInput(event) {
-        //console.log(event.target.value,event);
-        var field = event.target.name;
-        var value = event.target.value;
-        Object.keys(data).forEach(function (id) {
-            var item = data[id];
-            filters[id][field] = item[field].toLowerCase().includes(value.toLowerCase());
-            if (Object.values(filters[id]).every(x => x)) {
-                //https://stackoverflow.com/a/196038
-                document.getElementById(id).classList.remove("d-none");
-            } else {
-                document.getElementById(id).classList.add("d-none");
-            }
-        });
-    }
-
-    var filters = {};
-
-    function buildFilters() {
-        Object.keys(data).forEach(function (id) {
-            //var item = data[id];
-            filters[id] = {"first_name": true, "last_name": true};
-        });
-    }
-
-    function showPosts(id) {
-        //console.log(id);
-        showPostsNum({
-            "id": id, "display": 5,
-            "show": {"text": "Hide", "href": "hidePosts"},
-            "more": {"text": "More >>>", "href": "morePosts"}
-        });
-    }
-
-    function morePosts(id) {
-        //console.log(id);
-        showPostsNum({
-            "id": id, "display": "all",
-            "show": {"text": "Hide", "href": "hidePosts"},
-            "more": {"text": "Less <<<", "href": "showPosts"}
-        });
-    }
-
-    function hidePosts(id) {
-        //console.log(id);
-        showPostsNum({
-            "id": id, "display": 0,
-            "show": {"text": "Posts", "href": "showPosts"},
-            "more": {"text": "More >>>", "href": "morePosts"}
-        });
-    }
-
-    function showPostsNum(how) {
-        const last = x => x[x.length - 1];
-        var userDiv = document.getElementById(how.id),
-            postsDiv = document.getElementById("posts_" + how.id),
-            showPostsA = last(userDiv.children).children[0],
-            morePostsDiv = document.getElementById("more_" + how.id),
-            morePostsA = morePostsDiv.children[0].children[0];
-        if (how.display === "all") {
-            how.display = postsDiv.children.length;
-        }
-        [...postsDiv.children].forEach(function (item, index) {
-            if (index < how.display) {
-                item.classList.remove("d-none");
-            } else {
-                item.classList.add("d-none");
-            }
-        });
-        morePostsDiv.classList.remove("d-none");
-        const aHrefs = {"show": showPostsA, "more": morePostsA};
-        Object.keys(aHrefs).forEach(function (key) {
-            var item = aHrefs[key];
-            item.setAttribute("href", "javascript:" + how[key]["href"] + "(" + how.id + ");");
-            item.innerText = how[key]["text"];
-        })
-        if (how.display === 0) {
-            postsDiv.classList.add("d-none");
-        } else {
-            postsDiv.classList.remove("d-none");
-        }
-    }
-
-    function limitByCharsNum(s, n, append = "…") {
-        //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split#splitting_with_a_regexp_to_include_parts_of_the_separator_in_the_result
-        var charsCount = 0;
-        var res = [];
-        var stop = false;
-        s.split(/(\s+)/).forEach(function (item) {
-            if (stop) {
-                return;
-            }
-            if (charsCount + (item.length) > n) {
-                stop = true;
-                return;
-            }
-            res.push(item);
-            charsCount += item.length;
-        })
-        if (stop) {
-            res.push(append);
-        }
-        return res.join("");
     }
 
     function render(data) {

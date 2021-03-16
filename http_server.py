@@ -87,7 +87,7 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def register_routes(self):
         self.register_route(r'^/api/data$',self.get_all_data)
-        self.register_route(r'^/api/(product|review)/store',
+        self.register_route(r'^/api/(product|review)/store$',
                             self.store_product_or_review)
         
     def send_response_headers_json(self,data,status=None,gzip=False):
@@ -130,15 +130,15 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             }
         for k in product_data:
             product_data[k]['reviews']=[]
-        for n,i in enumerate(data['review']):
-            data['review'][n]['timestamp'] = (
-                calendar.timegm(
-                time.strptime(
-                data['review'][n]['time_str'],
-                '%Y-%m-%dT%H:%M:%S%z'
-                )
-                )
-                )
+##        for n,i in enumerate(data['review']):
+##            data['review'][n]['timestamp'] = (
+##                calendar.timegm(
+##                time.strptime(
+##                data['review'][n]['time_str'],
+##                '%Y-%m-%dT%H:%M:%S%z'
+##                )
+##                )
+##                )
         for i in data['review']:
             product_data[i['product_id']]['reviews'].append(i)
         cursor.close()
@@ -152,15 +152,31 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                  if i.lower() == 'Content-Length'.lower()])):
             return self.no_content(match)
         s=self.rfile.read(int(s[0]))
+        data = json.loads(s)
+        table = match.group(1)
         
         cursor = sql_connection.cursor(buffered=True)
+        if table == 'review':
+            cursor.execute(
+                ('select max(n) from review_new '
+                 'where product_id = %s',data['product_id']
+                 )
+                 )
+            n=list(cursor)[0][0]
+            data['n']=n+1 if n!=None else 0
         cursor.execute(
-            store_action_sql({'like':'liking','done':'done'}[match.group(1)]),
-            match.groups()[1:]+(match.group(3),))
+            #store_action_sql({'like':'liking','done':'done'}[match.group(1)]),
+            #match.groups()[1:]+(match.group(3),)
+            store_sql(table),
+            extract_fields_tuple(table,data)
+            )
+        #_id = list(cursor)[0][0];
         sql_connection.commit()
+        _id = cursor.lastrowid #https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-lastrowid.html
         cursor.close()
         #print(match.groups())
-        return self.no_content(match)
+        #return self.no_content(match)
+        return self.send_response_headers_json(_id)
 
 
 Handler = HTTPRequestHandler
@@ -174,34 +190,73 @@ sql_connection=(obtain_sql_connection:=lambda:(
         )
 ))()
 
+##fields = {'review':(
+##    'review join `user` on `user`.id = review.user_id',
+##    {'user_name':'`user`.name',
+##     'rating':'review.rating * 2',
+##     'comment':'review.comment',
+##     'time_str':'review.`time`',
+##     'product_id':'review.product_id',
+##     'n':'n'}
+##    ),
+##          'product':(
+##    'product join merchant on product.merchant_id = merchant.id',
+##    {'name':'product.name',
+##     'picture':'product.contest_page_picture',
+##     'value':'product.value',
+##     '`timestamp`':'product.generation_time',
+##     'merchant_name':'merchant.title',
+##     'id':'product.id'}
+##    )}
+##
 fields = {'review':(
-    'review join `user` on `user`.id = review.user_id',
-    {'user_name':'`user`.name',
-     'rating':'review.rating * 2',
-     'comment':'review.comment',
-     'time_str':'review.`time`',
-     'product_id':'review.product_id',
+    'review_new',
+    {'user_name':'user_name',
+     'rating':'rating',
+     'comment':'comment',
+     '`timestamp`':'unix_timestamp(created)',
+     'product_id':'product_id',
      'n':'n'}
     ),
           'product':(
-    'product join merchant on product.merchant_id = merchant.id',
-    {'name':'product.name',
-     'picture':'product.contest_page_picture',
-     'value':'product.value',
-     '`timestamp`':'product.generation_time',
-     'merchant_name':'merchant.title',
-     'id':'product.id'}
+    'product_new',
+    {'name':'name',
+     'picture':'picture',
+     'value':'value',
+     '`timestamp`':'unix_timestamp(created)',
+     'merchant_name':'merchant_name',
+     'id':'id'}
     )}
 
-sql_insert_vacancy = lambda action:(
-'INSERT INTO vacancy (id,%s) VALUES (%%s,%%s) '
-'ON DUPLICATE KEY UPDATE %s=%%s'
-)%((action,)*2)
+fields_insert_list = {
+    'review':('review_new',[
+        'user_name',
+        'rating',
+        'comment',
+        'product_id',
+        'n',
+        ]),
+    'product':('product_new',[
+        'name',
+        'picture',
+        'value',
+        'merchant_name',
+        ])
+    }
 
-store_action_sql = lambda action:(
-    'INSERT INTO actions (vacancy_id,%s) VALUES (%%s,%%s) '
-    'ON DUPLICATE KEY UPDATE %s=%%s'
-    )%((action,)*2)
+store_sql = lambda keyword:(
+    'INSERT INTO %s (%s) VALUES (%s); '
+    #'select LAST_INSERT_ID();'
+    )%(
+        fields_insert_list[keyword][0],
+        ', '.join('`%s`'%i for i in fields_insert_list[keyword][1]),
+        ', '.join(['%s']*len(fields_insert_list[keyword][1]))
+        )
+
+#store_fields = lambda keyword:fields_insert_list[keyword][1]
+extract_fields_tuple = lambda keyword,data:tuple(
+    data[i] for i in fields_insert_list[keyword][1]
+    )
 
 while PORT<8010:
     try:
