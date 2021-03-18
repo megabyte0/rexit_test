@@ -173,8 +173,8 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if table == 'review':
             cursor.execute(
                 ('select max(n) from review_new '
-                 'where product_id = %s',data['product_id']
-                 )
+                 'where product_id = %s'
+                 ),(data['product_id'],)
                  )
             n=list(cursor)[0][0]
             data['n']=n+1 if n!=None else 0
@@ -190,6 +190,8 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 data['image'] = pic_png_data
                 res['image'] = base64.b64encode(pic_png_data).decode()
+        print(store_sql(table))
+        print(extract_fields_tuple(table,data))
         cursor.execute(
             #store_action_sql({'like':'liking','done':'done'}[match.group(1)]),
             #match.groups()[1:]+(match.group(3),)
