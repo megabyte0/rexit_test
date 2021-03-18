@@ -12,6 +12,11 @@ import os.path
 import gzip
 import time
 import calendar
+from PIL import Image
+import io
+import urllib.request
+import base64
+import urllib.parse
 
 PORT = 8000
 
@@ -89,6 +94,10 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.register_route(r'^/api/data$',self.get_all_data)
         self.register_route(r'^/api/(product|review)/store$',
                             self.store_product_or_review)
+        self.register_route(r'^/api/picture/check$',
+                            self.check_picture_post)
+        self.register_route(r'^/api/picture/(.*)$',
+                            self.thumbnail)
         
     def send_response_headers_json(self,data,status=None,gzip=False):
         data_json=json.dumps(data)
@@ -125,9 +134,14 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 {k.strip("`"):v for k,v in zip(fields_dict,i)}
                 for i in cursor
                 ]
+        #with open('data.pickle','wb') as fp:
+        #    pickle.dump(data,fp)
         product_data = {i['id']:i
             for i in data['product']
             }
+        for k,v in product_data.items():
+            if v['image']:
+                product_data[k]['image'] = base64.b64encode(v['image']).decode()
         for k in product_data:
             product_data[k]['reviews']=[]
 ##        for n,i in enumerate(data['review']):
@@ -146,7 +160,7 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             list(product_data.values()),gzip=True)
 
     def store_product_or_review(self,match):
-        global sql_connection,store_action_sql
+        global sql_connection,store_sql
         if not (self.headers and
             (s:=[self.headers[i] for i in self.headers
                  if i.lower() == 'Content-Length'.lower()])):
@@ -164,6 +178,18 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                  )
             n=list(cursor)[0][0]
             data['n']=n+1 if n!=None else 0
+        res={'success':True}
+        if table == 'product':
+            pic_png_data = self.check_picture(data['picture'])
+            if isinstance(pic_png_data,Exception):
+                cursor.close()
+                return self.send_response_headers_json({
+                    'success':False,
+                    'exception':str(pic_png_data)
+                    })
+            else:
+                data['image'] = pic_png_data
+                res['image'] = base64.b64encode(pic_png_data).decode()
         cursor.execute(
             #store_action_sql({'like':'liking','done':'done'}[match.group(1)]),
             #match.groups()[1:]+(match.group(3),)
@@ -173,11 +199,81 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         #_id = list(cursor)[0][0];
         sql_connection.commit()
         _id = cursor.lastrowid #https://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-lastrowid.html
+        res['id'] = _id
         cursor.close()
         #print(match.groups())
         #return self.no_content(match)
-        return self.send_response_headers_json(_id)
+        return self.send_response_headers_json(res)
 
+    def check_picture(self,url):
+        try:
+            req = urllib.request.Request(url, headers = {
+                'User-Agent':
+	'Mozilla/5.0 (X11; Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0'
+                })
+            # https://stackoverflow.com/a/48249298
+            with urllib.request.urlopen(req) as fp:
+                data = fp.read()
+            img = Image.open(io.BytesIO(data))
+            # https://stackoverflow.com/a/273962
+            img.thumbnail((40,40), Image.ANTIALIAS)
+            # https://stackoverflow.com/a/646297
+            with io.BytesIO() as output:
+                img.save(output, format="PNG")
+                contents = output.getvalue()
+            return contents
+        except Exception as e:
+            return e
+
+    def check_picture_post(self,match):
+        if not (self.headers and
+            (s:=[self.headers[i] for i in self.headers
+                 if i.lower() == 'Content-Length'.lower()])):
+            return self.send_response_headers_json({'success':False})
+        s = self.rfile.read(int(s[0]))
+        if not s:
+            return self.send_response_headers_json({'success':False})
+        data = json.loads(s)
+        pic_png_data = self.check_picture(data)
+        if isinstance(pic_png_data,Exception):
+            return self.send_response_headers_json({
+                'success':False,
+                'exception':str(pic_png_data)
+                })
+        return self.send_response_headers_json({
+            'success':True,
+            'image':base64.b64encode(pic_png_data).decode()
+            })
+
+    def thumbnail(self,match):
+        global sql_connection
+        url = urllib.parse.unquote(match.group(1))
+        pic_png_data = self.check_picture(url)
+        if not isinstance(pic_png_data,Exception):
+            cursor = sql_connection.cursor(buffered=True)
+            cursor.execute(
+                ('update product_new set image = %s '
+                 'where picture = %s'),
+                (pic_png_data,url)
+                )
+            sql_connection.commit()
+            cursor.close()
+            
+            encoded = pic_png_data
+            headers = dict()
+            headers['Access-Control-Allow-Origin']='*'#
+            f = io.BytesIO()
+            f.write(encoded)
+            f.seek(0)
+            self.send_response(HTTPStatus.OK)
+            for k,v in headers.items():
+                self.send_header(k,v)
+            self.send_header("Content-type", "image/png")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            return f
+        else:
+            return self.send_response_headers_json(str(pic_png_data))
 
 Handler = HTTPRequestHandler
 
@@ -186,7 +282,8 @@ sql_connection=(obtain_sql_connection:=lambda:(
         user='root',
         password='12345678',
         database='test',
-        port=33061
+        port=33061,
+        use_pure=True # https://stackoverflow.com/a/53468522 https://stackoverflow.com/a/55150960
         )
 ))()
 
@@ -225,7 +322,8 @@ fields = {'review':(
      'value':'value',
      '`timestamp`':'unix_timestamp(created)',
      'merchant_name':'merchant_name',
-     'id':'id'}
+     'id':'id',
+     '`image`':'`image`'}
     )}
 
 fields_insert_list = {
@@ -241,6 +339,7 @@ fields_insert_list = {
         'picture',
         'value',
         'merchant_name',
+        'image'
         ])
     }
 
