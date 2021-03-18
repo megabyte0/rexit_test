@@ -12,22 +12,32 @@ class MyController {
     }
 
     //no views, not needed, pure static or json
-    public function getUsersWithPosts() {
-        $users = $this->db->getAllUsers();
-        $posts = $this->db->getAllPosts();
-        $usersIdMap = [];
-        foreach ($users as $user) {
-            $usersIdMap[(int)($user["id"])] = $user;
-        }
-//        var_dump($users,$posts,$usersIdMap);die;
-        foreach ($posts as $post) {
-            $userId = (int)($post["userId"]);
-            if (!array_key_exists("Posts", $usersIdMap[$userId])) {
-                $usersIdMap[$userId]["Posts"] = [];
+    public function getProductsWithReviews() {
+        $products = $this->db->getAllProducts();
+        //var_dump($products);die;
+        $reviews = $this->db->getAllReviews();
+        $productsIdMap = [];
+        foreach ($products as $product) {
+            if ($product["image"]!==NULL) {
+                $product["image"]=base64_encode($product["image"]);
             }
-            $usersIdMap[$userId]["Posts"][$post["id"]] = $post;
+            //TODO: auto translate types
+            $product["value"] = (double)($product["value"]);
+            $product["timestamp"] = (int)($product["timestamp"]);
+            $product["reviews"] = [];
+            $productsIdMap[(int)($product["id"])] = $product;
         }
-        return $usersIdMap;
+        foreach ($reviews as $review) {
+            $productId = (int)($review["product_id"]);
+//            if (!array_key_exists("reviews", $productsIdMap[$productId])) {
+//                $productsIdMap[$productId]["reviews"] = [];
+//            }
+            foreach (["rating","timestamp","n"] as $field) {
+                $review[$field] = (int)$review[$field];
+            }
+            $productsIdMap[$productId]["reviews"][] = $review;
+        }
+        return array_values($productsIdMap);
     }
 
     public function getStatic($fileName) {

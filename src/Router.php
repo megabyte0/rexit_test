@@ -15,7 +15,7 @@ class Router {
     protected function registerRoutes() {
         $this->registerRoute('/^\\/api\\/data$/',
             //https://stackoverflow.com/a/13543245
-            array($this->controller,'getUsersWithPosts')
+            array($this->controller, 'getProductsWithReviews')
         );
         $this->registerRoute('/^\\/$/',
             $this->controller->getStatic("./index.html")

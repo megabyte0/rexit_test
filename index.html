@@ -46,7 +46,7 @@
         });
     }
 
-    const baseUrl = 'http://localhost:8001';
+    const baseUrl = 'http://localhost:8000';
 
     const onLoad = function () {
         const dataUrl = (
@@ -625,7 +625,7 @@
                 productsHashMap[postData["id"]] = postData;
                 rendered.splice(0,0,...renderData([postData]));
                 showRenderedProducts(false);
-                addProductOrReviewEnd(event);
+                addProductOrReviewEnd("product")(event);
             }
         })
     }

@@ -283,7 +283,7 @@ sql_connection=(obtain_sql_connection:=lambda:(
     mysql.connector.connect(
         user='root',
         password='12345678',
-        database='test',
+        database='test1',
         port=33061,
         use_pure=True # https://stackoverflow.com/a/53468522 https://stackoverflow.com/a/55150960
         )
@@ -309,7 +309,7 @@ sql_connection=(obtain_sql_connection:=lambda:(
 ##    )}
 ##
 fields = {'review':(
-    'review_new',
+    'review',
     {'user_name':'user_name',
      'rating':'rating',
      'comment':'comment',
@@ -318,7 +318,7 @@ fields = {'review':(
      'n':'n'}
     ),
           'product':(
-    'product_new',
+    'product',
     {'name':'name',
      'picture':'picture',
      'value':'value',
@@ -329,14 +329,14 @@ fields = {'review':(
     )}
 
 fields_insert_list = {
-    'review':('review_new',[
+    'review':('review',[
         'user_name',
         'rating',
         'comment',
         'product_id',
         'n',
         ]),
-    'product':('product_new',[
+    'product':('product',[
         'name',
         'picture',
         'value',

@@ -9,54 +9,69 @@ use Person\PersonGenerator;
 
 class MyDbModel extends DbModel {
     protected $queries = [
-        "getAllUsers" => "select * from test.`Users`;",
-        "getAllPosts" => "select * from test.`Posts`;",
-        "insertUser" => "INSERT INTO test.`Users`
-(id, first_name, last_name, phone, email)
-VALUES(?, ?, ?, ?, ?);",
-        "insertPost" => "INSERT INTO test.`Posts`
-(id, userId, title, body)
-VALUES(?, ?, ?, ?);",
-        "createTableUsers" => "CREATE TABLE test.Users (
-	id BIGINT UNSIGNED NOT NULL,
-	first_name varchar(255) NULL,
-	last_name varchar(255) NULL,
-	phone varchar(20) NULL,
-	email varchar(255) NULL,
-	CONSTRAINT Users_PK PRIMARY KEY (id)
-)
-ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_0900_ai_ci;",
-        "createTablePosts" => "CREATE TABLE test.Posts (
-	id BIGINT UNSIGNED NOT NULL,
-	userId BIGINT UNSIGNED NOT NULL,
-	title varchar(1000) NULL,
-	body MEDIUMTEXT NULL,
-	CONSTRAINT Posts_PK PRIMARY KEY (id),
-	CONSTRAINT Posts_FK FOREIGN KEY (userId) REFERENCES test.Users(id)
-)
-ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_0900_ai_ci;",
-        "createDatabase" => "create database IF NOT EXISTS test
+        "getAllProducts" => "select name
+, picture
+, value
+, unix_timestamp(created) as `timestamp`
+, merchant_name
+, id
+, `image` from test1.product;",
+        "getAllReviews" => "select user_name
+, rating
+, comment
+, unix_timestamp(created) as `timestamp`
+, product_id
+, n 
+from test1.review;",
+//        "insertProduct" => "INSERT INTO test1.product
+//(id, first_name, last_name, phone, email)
+//VALUES(?, ?, ?, ?, ?);",
+//        "insertReview" => "INSERT INTO test1.review
+//(id, userId, title, body)
+//VALUES(?, ?, ?, ?);",
+        "createTableProducts" => "CREATE TABLE test1.`product` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(287) NOT NULL,
+  `picture` varchar(128) NOT NULL,
+  `value` double DEFAULT NULL,
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `merchant_name` varchar(39) NOT NULL,
+  `id_wish` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `image` blob,
+  PRIMARY KEY (`id`),
+  KEY `product_picture_IDX` (`picture`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=68 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;",
+        "createTableReviews" => "CREATE TABLE test1.`review` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_name` varchar(47) NOT NULL,
+  `rating` bigint NOT NULL DEFAULT '0',
+  `comment` mediumtext NOT NULL,
+  `product_id_wish` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
+  `n` bigint unsigned NOT NULL,
+  `timestamp` decimal(17,6) DEFAULT NULL,
+  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `product_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `review_n_IDX` (`n`,`product_id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=32771 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;",
+        "createDatabase" => "create database IF NOT EXISTS test1
 CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;",
         "fetchTables" => "select TABLE_NAME from information_schema.TABLES
-where TABLE_SCHEMA = 'test';",
-        "getUsersCount" => "select count(*) as n from test.`Users`;",
-        "getPostsCount" => "select count(*) as n from test.`Posts`;",
+where TABLE_SCHEMA = 'test1';",
+//        "getUsersCount" => "select count(*) as n from test1.`Users`;",
+//        "getPostsCount" => "select count(*) as n from test1.`Posts`;",
     ];
     protected $queriesWithResult = [
-        "getAllUsers" => NULL,
-        "getAllPosts" => NULL,
+        "getAllProducts" => NULL,
+        "getAllReviews" => NULL,
         "fetchTables" => NULL,
-        "getUsersCount" => NULL,
-        "getPostsCount" => NULL,
+//        "getUsersCount" => NULL,
+//        "getPostsCount" => NULL,
     ];//associative array for hash key lookup (seems faster)
-    protected $fieldsOrder = [
-        "Posts" => ["id", "userId", "title", "body"],
-        "Users" => ["id", "first_name", "last_name", "phone", "email"],
+    protected $insertFieldsOrder = [
+        "product" => ["id", "userId", "title", "body"],
+        "review" => ["id", "first_name", "last_name", "phone", "email"],
     ];
     protected $tables = ["Users" => NULL];
 
@@ -64,7 +79,7 @@ where TABLE_SCHEMA = 'test';",
 
     function __construct(&$connection) {
         parent::__construct($connection);
-        $this->check();
+        //$this->check();
     }
 
     public function checkTables() {
@@ -98,12 +113,12 @@ where TABLE_SCHEMA = 'test';",
         $this->insert($items, "insertPost", "Posts", False);
     }
 
-    public function getAllUsers() {
-        return $this->execPrepared("getAllUsers", []);
+    public function getAllProducts() {
+        return $this->execPrepared("getAllProducts", []);
     }
 
-    public function getAllPosts() {
-        return $this->execPrepared("getAllPosts", []);
+    public function getAllReviews() {
+        return $this->execPrepared("getAllReviews", []);
     }
 
     public function checkDatabaseAndTables() {

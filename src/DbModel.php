@@ -12,7 +12,7 @@ class DbModel {
     protected $prepared = [];
     protected $queries;
     protected $queriesWithResult;
-    protected $fieldsOrder;
+    protected $insertFieldsOrder;
 
     function __construct(&$connection) {
         $this->connection = $connection;
@@ -23,6 +23,7 @@ class DbModel {
 
     public function execPrepared($key, $params) {
         $stmt = $this->prepared[$key];
+        //var_dump($stmt);die;
         if (is_a($stmt, "PDOStatement")) {
             $result = $stmt->execute($params);
             if (!array_key_exists($key, $this->queriesWithResult)) {
@@ -57,7 +58,7 @@ class DbModel {
         foreach ($items as $item) {
             $generatedId += 1;//I'm aware about ++, it's a python style
             $row = [];
-            foreach ($this->fieldsOrder[$table] as $field) {
+            foreach ($this->insertFieldsOrder[$table] as $field) {
                 if (!array_key_exists($field, $item)) {
                     if (($field === "id") && ($generateId)) {
                         $fieldValue = $generatedId;
