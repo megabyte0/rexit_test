@@ -60,8 +60,8 @@ class MyController {
         // https://stackoverflow.com/a/18867369
         $data = json_decode(file_get_contents('php://input'), true);
         if ($table === 'review') {
-            $n = $this->db->execPrepared("getReviewMaxN", [(int)$data['product_id']])["n"];
-            $data['n'] = ($n !== NULL) ? $n + 1 : 0;
+            $n = $this->db->execPrepared("getReviewMaxN", [(int)$data['product_id']])[0]["n"];
+            $data['n'] = ($n !== NULL) ? (int)($n) + 1 : 0;
         }
         $res = ['success' => true];
         if ($table === 'product') {
