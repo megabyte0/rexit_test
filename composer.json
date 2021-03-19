@@ -2,17 +2,14 @@
   "autoload": {
     "psr-4": {
       "Server\\": "src/",
-      "Names\\": "src/names",
-      "Words\\": "src/words",
-      "Phone\\": "src/phone",
-      "Person\\": "src/person",
-      "Email\\": "src/email"
+      "Image\\": "src/image"
     }
   },
   "require": {
     "ext-mysqli": "*",
     "ext-pdo": "*",
     "ext-json": "*",
-    "ext-zlib": "*"
+    "ext-zlib": "*",
+    "ext-imagick": "*"
   }
 }

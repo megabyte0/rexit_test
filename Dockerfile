@@ -1,5 +1,9 @@
 FROM php:7.4.14-cli
 # PHP extensions
+# https://webapplicationconsultant.com/docker/how-to-install-imagick-in-php-docker/
+RUN apt-get update && apt-get install -y libmagickwand-dev --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN printf "\n" | pecl install imagick
+RUN docker-php-ext-enable imagick
 # https://stackoverflow.com/a/44637428
 # https://stackoverflow.com/a/59301392
 RUN \

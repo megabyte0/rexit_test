@@ -1,5 +1,7 @@
 <?php
 
+//phpinfo();die;
+
 require __DIR__ . '/vendor/autoload.php';
 
 //https://forums.docker.com/t/app-container-cannot-access-mysql-container/6660/2

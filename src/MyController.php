@@ -4,6 +4,8 @@
 namespace Server;
 
 
+use Image\Image;
+
 class MyController {
     protected $db;
 
@@ -44,5 +46,12 @@ class MyController {
         return function () use ($fileName) {
             return file_get_contents($fileName);
         };
+    }
+
+    public function getImage($url) {
+        $url = urldecode($url);
+        $image = Image::thumbnail($url);
+        $this->db->updateProductImage($url, $image);
+        return $image;
     }
 }

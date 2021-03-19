@@ -5,7 +5,6 @@ namespace Server;
 
 use mysqli;
 use PDO;
-use Person\PersonGenerator;
 
 class MyDbModel extends DbModel {
     protected $queries = [
@@ -61,6 +60,8 @@ COLLATE = utf8mb4_0900_ai_ci;",
 where TABLE_SCHEMA = 'test1';",
 //        "getUsersCount" => "select count(*) as n from test1.`Users`;",
 //        "getPostsCount" => "select count(*) as n from test1.`Posts`;",
+        "updateProductImage" => "update test1.product set image = ?  
+where picture = ?",
     ];
     protected $queriesWithResult = [
         "getAllProducts" => NULL,
@@ -119,6 +120,10 @@ where TABLE_SCHEMA = 'test1';",
 
     public function getAllReviews() {
         return $this->execPrepared("getAllReviews", []);
+    }
+
+    public function updateProductImage($url, $image) {
+        return $this->execPrepared("updateProductImage", [$image, $url]);
     }
 
     public function checkDatabaseAndTables() {
