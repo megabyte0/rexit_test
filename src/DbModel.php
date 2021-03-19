@@ -55,6 +55,7 @@ class DbModel {
     protected function insert($items, $key, $table, $generateId) {
         $stmt = $this->prepared[$key];
         $generatedId = 0;
+        $resultIds = [];
         foreach ($items as $item) {
             $generatedId += 1;//I'm aware about ++, it's a python style
             $row = [];
@@ -72,14 +73,32 @@ class DbModel {
             }
             if (is_a($stmt, "PDOStatement")) {
                 $this->execPrepared($key, $row);
+                $resultIds[] = $this->connection->lastInsertId();
             } elseif (is_a($stmt, "mysqli_stmt")) {
                 $fieldTypes = implode("",
                     array_map(function ($elem) {
-                        return is_a($elem, "int") ? "i" : "s";
+                        if (is_a($elem, "int")) {
+                            return "i";
+                        } elseif (is_double($elem) || is_float($elem)) {
+                            return "f";
+                        } else {
+                            return "s";
+                        }
                     }, $row)
                 );
                 $this->execPrepared($key, array_merge([$fieldTypes], $row));
+                $resultIds[] = $this->connection->insert_id;
             }
         }
+        return $resultIds;
+    }
+
+    protected function bulkInsert($items, $table, $fields) {
+        $sql = sprintf("insert into %s (%s) values %s;",
+        $table,
+        implode(", ",array_map(
+            function ($field) {return "`$field`";},
+            $fields))
+        );
     }
 }

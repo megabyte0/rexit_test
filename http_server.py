@@ -172,7 +172,7 @@ class HTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         cursor = sql_connection.cursor(buffered=True)
         if table == 'review':
             cursor.execute(
-                ('select max(n) from review_new '
+                ('select max(n) from review '
                  'where product_id = %s'
                  ),(data['product_id'],)
                  )

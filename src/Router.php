@@ -20,8 +20,14 @@ class Router {
         $this->registerRoute('/^\\/$/',
             $this->controller->getStatic("./index.html")
         );
+        $this->registerRoute('/^\\/api\\/picture\\/check$/',
+            array($this->controller,'checkPicture')
+        );
         $this->registerRoute('/^\\/api\\/picture\\/(.*)$/',
             array($this->controller,'getImage')
+        );
+        $this->registerRoute('/^\\/api\\/(product|review)\\/store$/',
+            array($this->controller,'storeProductOrReview')
         );
     }
 
