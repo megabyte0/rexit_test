@@ -27,6 +27,9 @@ class DbModel {
         if (is_a($stmt, "PDOStatement")) {
             $result = $stmt->execute($params);
             if (!array_key_exists($key, $this->queriesWithResult)) {
+                if ($result === false) {
+                    var_dump($stmt->errorInfo());
+                }
                 return $result;
             } else {
                 return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -80,7 +83,7 @@ class DbModel {
                         if (is_a($elem, "int")) {
                             return "i";
                         } elseif (is_double($elem) || is_float($elem)) {
-                            return "f";
+                            return "d";// https://stackoverflow.com/a/24533443
                         } else {
                             return "s";
                         }
@@ -93,12 +96,44 @@ class DbModel {
         return $resultIds;
     }
 
-    protected function bulkInsert($items, $table, $fields) {
+    public function batchInsert($items, $table, $fields, $mysqliFieldTypes) {
         $sql = sprintf("insert into %s (%s) values %s;",
         $table,
         implode(", ",array_map(
             function ($field) {return "`$field`";},
-            $fields))
+            $fields)),
+            substr(str_repeat(
+                "(".substr(str_repeat("?, ",count($fields)),0,-2)."), "
+                , count($items)
+            ),0,-2)
         );
+//        var_dump($sql);
+        // https://stackoverflow.com/a/46861938
+        $values = array_merge(...array_map(function ($item) use ($fields) {
+            $res = [];
+            foreach ($fields as $field) {
+                if (array_key_exists($field,$item)) {
+                    $res[] = $item[$field];
+                } else {
+                    $res[] = NULL;
+                }
+            }
+            return $res;
+        },$items));
+        $stmt = $this->connection->prepare($sql);
+//        var_dump($stmt);
+        $preparedKey = "batchInsert".$table;
+        $this->prepared[$preparedKey] = $stmt;
+
+        if (is_a($stmt, "PDOStatement")) {
+            $res = $this->execPrepared($preparedKey, $values);
+            //var_dump($res);
+        } elseif (is_a($stmt, "mysqli_stmt")) {
+            $this->execPrepared($preparedKey, array_merge(
+                [str_repeat($mysqliFieldTypes,count($items))],
+                $values)
+            );
+        }
+        unset($this->prepared[$preparedKey]);
     }
 }

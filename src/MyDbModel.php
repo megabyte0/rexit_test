@@ -33,9 +33,9 @@ VALUES (?, ?, ?, ?, ?);",
   `name` varchar(287) NOT NULL,
   `picture` varchar(128) NOT NULL,
   `value` double DEFAULT NULL,
+  `timestamp` decimal(17,6) DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `merchant_name` varchar(39) NOT NULL,
-  `id_wish` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `image` blob,
   PRIMARY KEY (`id`),
   KEY `product_picture_IDX` (`picture`) USING BTREE
@@ -45,7 +45,6 @@ VALUES (?, ?, ?, ?, ?);",
   `user_name` varchar(47) NOT NULL,
   `rating` bigint NOT NULL DEFAULT '0',
   `comment` mediumtext NOT NULL,
-  `product_id_wish` varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `n` bigint unsigned NOT NULL,
   `timestamp` decimal(17,6) DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -64,6 +63,10 @@ where TABLE_SCHEMA = 'test1';",
 where picture = ?;",
         "getReviewMaxN" => "select max(n) as n from test1.review 
 where product_id = ?;",
+        "updateReviewCreatedFromTimestamp" =>
+            "update test1.review set created = FROM_UNIXTIME(`timestamp`);",
+        "updateProductCreatedFromTimestamp" =>
+            "update test1.product set created = FROM_UNIXTIME(`timestamp`);",
     ];
     protected $queriesWithResult = [
         "getAllProducts" => NULL,

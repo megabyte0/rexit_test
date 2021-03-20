@@ -19,5 +19,6 @@ RUN php composer-setup.php --install-dir=/bin --filename=composer
 RUN php -r "unlink('composer-setup.php');"
 COPY . /usr/src/server
 RUN composer dump-autoload
+#RUN php seed.php
 #EXPOSE 8000
 CMD [ "php", "-S", "0.0.0.0:8000", "./router.php" ]
