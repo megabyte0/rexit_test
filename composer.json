@@ -1,7 +1,8 @@
 {
   "autoload": {
     "psr-4": {
-      "Server\\": "src/"
+      "Server\\": "src/",
+      "Seeder\\": "src/seeder"
     }
   },
   "require": {

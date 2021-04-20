@@ -21,6 +21,9 @@ services:
       - mysql
     ports:
       - 8000:8000
-    volumes:
-      - ./:/usr/src/server
+    #volumes:
+    #  - ./:/usr/src/server
+    # volumes commented for no /usr/src/server/vendor/ directory in the container
+    # because of mounting volume after executing the Dockerfile
+    # not sure how to deal with it
     # privileged: true # Privileged mode could be required to run this container under Windows

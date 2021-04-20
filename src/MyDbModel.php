@@ -50,7 +50,7 @@ COLLATE=utf8mb4_0900_ai_ci;",
         "createDatabase" => "create database IF NOT EXISTS test
 CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;",
-        "fetchTables" => "select TABLE_NAME from information_schema.TABLES
+        "fetchTables" => "select TABLE_NAME, TABLE_ROWS from information_schema.TABLES
 where TABLE_SCHEMA = 'test';",
     ];
     protected $queriesWithResult = [
@@ -68,13 +68,13 @@ where TABLE_SCHEMA = 'test';",
 
     public function checkTables() {
         $tables = $this->execPrepared("fetchTables", []);
-        $tablesPresent = [];
+        $tablesNumRows = [];
         foreach ($tables as $record) {
             if (!array_key_exists("TABLE_NAME", $record))
                 continue;
-            $tablesPresent[$record["TABLE_NAME"]] = NULL;
+            $tablesNumRows[$record["TABLE_NAME"]] = $record["TABLE_ROWS"];
         }
-        return $tablesPresent;
+        return $tablesNumRows;
     }
 
     public function createNeededTables(array $tablesPresent) {
