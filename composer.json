@@ -1,15 +1,13 @@
 {
   "autoload": {
     "psr-4": {
-      "Server\\": "src/",
-      "Image\\": "src/image"
+      "Server\\": "src/"
     }
   },
   "require": {
     "ext-mysqli": "*",
     "ext-pdo": "*",
     "ext-json": "*",
-    "ext-zlib": "*",
-    "ext-imagick": "*"
+    "ext-zlib": "*"
   }
 }

@@ -21,6 +21,6 @@ services:
       - mysql
     ports:
       - 8000:8000
-    #volumes:
-    #  - ./:/usr/src/server
+    volumes:
+      - ./:/usr/src/server
     # privileged: true # Privileged mode could be required to run this container under Windows
