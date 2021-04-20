@@ -7,6 +7,11 @@ use mysqli;
 use PDO;
 
 class MyDbModel extends DbModel {
+    #https://stackoverflow.com/a/2533913
+    protected $sqlSelectAge = "
+DATE_FORMAT(NOW(), '%Y') -
+DATE_FORMAT(birthDate, '%Y') -
+(DATE_FORMAT(NOW(), '00-%m-%d') < DATE_FORMAT(birthDate, '00-%m-%d'))";
     protected $queries = [
         "getAllClients" => "SELECT  
 client.id as id, 
@@ -15,7 +20,7 @@ firstname,
 lastname, 
 email, 
 gender.name as gender,  
-birthDate
+cast(birthDate as char) as birthDate
 FROM test.client
 join test.gender on gender.id=client.gender_id
 join test.category on category.id=client.category_id;",
@@ -90,15 +95,53 @@ where TABLE_SCHEMA = 'test';",
         }
     }
 
-    public function getAllClients() {
+    public function getAllClients($params) {
         return $this->execPrepared("getAllClients", []);
+    }
+
+    protected function generateSelectClientsSql($params) {
+        $sql = [str_replace(["\nFROM",";"],[",\n".
+            $this->sqlSelectAge." as age\n".
+            "FROM",""],$this->queries["getAllClients"])];
+        list($sqlWherePart, $paramsWhere) = $this->generateSelectClientWhere($params);
+        $sql[]=$sqlWherePart;
+        list($sqlLimitPart, $paramsLimit) = $this->generateSelectClientLimit($params);
+        $sql[]=$sqlLimitPart;
+        return array(implode(' ',$sql),array_merge($paramsWhere,$paramsLimit));
+    }
+
+    protected function generateSelectClientWhere($params) {
+        $intArray = function ($s) {
+            return [(int)$s];
+        };
+        $intArrayPlusOne = function ($s) {
+            return [((int)$s)+1];
+        };
+        $whereDict = [
+            'category_id' => ['category_id = ?', $intArray],
+            'gender_id' => ['gender_id = ?', $intArray],
+            'age' => ["(birthDate > date_sub(curdate(),interval ? year)) and
+(birthDate <= date_sub(curdate(),interval ? year))", function ($s) {
+                return [((int)$s) + 1, (int)$s];
+            }],
+            'min_age' => ['birthDate <= date_sub(curdate(),interval ? year)', $intArray],
+            'max_age' => ['birthDate > date_sub(curdate(),interval ? year)', $intArrayPlusOne],
+            'bday' => ['day(birthDate) = ?', $intArray],
+            'bmonth' => ['month(birthDate) = ?', $intArray],
+            'byear' => ['year(birthDate) = ?', $intArray],
+        ];
+    }
+
+    protected function generateSelectClientLimit($params) {
     }
 
     public function checkDatabaseAndTables() {
         $this->execPrepared("createDatabase", []);
+        $tableRowsCount = $this->checkTables();
         $this->createNeededTables(
-            $this->checkTables()
+            $tableRowsCount
         );
+        return $tableRowsCount;
         //TODO: make this not an excessive query but a try catch thing
     }
 }

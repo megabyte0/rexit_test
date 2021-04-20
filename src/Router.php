@@ -13,21 +13,34 @@ class Router {
     }
 
     protected function registerRoutes() {
-        $this->registerRoute('/^\\/api\\/data$/',
+        $d = [
+            'category_id' => '\\d+',
+            'firstname_like' => '[A-Za-z]+',
+            'lastname_like' => '[A-Za-z]+',
+            'email_like' => '[-A-Za-z.@_]+',
+            'gender_id' => '\\d+',
+            'limit' => '\\d+',
+            'offset' => '\\d+',
+            'age' => '\\d+',
+            'bday' => '\\d+',
+            'bmonth' => '\\d+',
+            'byear' => '\\d+',
+            'min_age' => '\\d+',
+            'max_age' => '\\d+',
+        ];
+        $dStr = implode('|',array_map(
+            function ($k,$v){
+                return sprintf('(?:%s\\=%s)',preg_quote($k,'/'),$v);
+            },
+            array_keys($d),array_values($d)
+        ));
+        $this->registerRoute(
+            sprintf('/^\\/api\\/data\\/\\?((?:(?:%s)\\&?)*)\\/?$/',$dStr),
             //https://stackoverflow.com/a/13543245
-            array($this->controller, 'getProductsWithReviews')
+            array($this->controller, 'getClients')
         );
         $this->registerRoute('/^\\/$/',
             $this->controller->getStatic("./index.html")
-        );
-        $this->registerRoute('/^\\/api\\/picture\\/check$/',
-            array($this->controller,'checkPicture')
-        );
-        $this->registerRoute('/^\\/api\\/picture\\/(.*)$/',
-            array($this->controller,'getImage')
-        );
-        $this->registerRoute('/^\\/api\\/(product|review)\\/store$/',
-            array($this->controller,'storeProductOrReview')
         );
     }
 
@@ -74,7 +87,6 @@ class Router {
         header("Content-Length: ".(strlen($data)));
         header("Access-Control-Allow-Origin: *");
         echo ($data);
-
     }
 
     public static function test() {
