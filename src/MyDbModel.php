@@ -95,19 +95,33 @@ where TABLE_SCHEMA = 'test';",
         }
     }
 
-    public function getAllClients($params) {
-        return $this->execPrepared("getAllClients", []);
+    public function getClients($params) {
+        list($selectSql, $sqlParams) = $this->generateSelectClientsSql($params);
+        //var_dump($this->connection);die;
+        if (is_a($this->connection,"PDO") &&
+            array_key_exists("limit", $params) && array_key_exists("offset", $params)
+        ) {
+            //https://stackoverflow.com/a/18006026
+            $this->connection->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+        }
+        return $this->execSql($selectSql, $sqlParams,
+            "selectFromClients",
+            str_repeat("i", count($sqlParams)),
+            true
+        );
+        //return $this->execPrepared("getAllClients", []);
     }
 
-    protected function generateSelectClientsSql($params) {
-        $sql = [str_replace(["\nFROM",";"],[",\n".
-            $this->sqlSelectAge." as age\n".
-            "FROM",""],$this->queries["getAllClients"])];
+    public function generateSelectClientsSql($params) {
+        $sql = [str_replace(["\nFROM", ";"], [",\n" .
+            $this->sqlSelectAge . " as age\n" .
+            "FROM", ""], $this->queries["getAllClients"])];
         list($sqlWherePart, $paramsWhere) = $this->generateSelectClientWhere($params);
-        $sql[]=$sqlWherePart;
+        $sql[] = $sqlWherePart;
         list($sqlLimitPart, $paramsLimit) = $this->generateSelectClientLimit($params);
-        $sql[]=$sqlLimitPart;
-        return array(implode(' ',$sql),array_merge($paramsWhere,$paramsLimit));
+        $sql[] = $sqlLimitPart;
+        $sql[] = ";";
+        return array(implode(' ', $sql), array_merge($paramsWhere, $paramsLimit));
     }
 
     protected function generateSelectClientWhere($params) {
@@ -115,7 +129,7 @@ where TABLE_SCHEMA = 'test';",
             return [(int)$s];
         };
         $intArrayPlusOne = function ($s) {
-            return [((int)$s)+1];
+            return [((int)$s) + 1];
         };
         $whereDict = [
             'category_id' => ['category_id = ?', $intArray],
@@ -130,9 +144,38 @@ where TABLE_SCHEMA = 'test';",
             'bmonth' => ['month(birthDate) = ?', $intArray],
             'byear' => ['year(birthDate) = ?', $intArray],
         ];
+        $where = [];
+        foreach ($params as $k => $v) {
+            if (array_key_exists($k,$whereDict)) {//limit,offset
+                $where[] = [$v, $whereDict[$k]];
+            }
+        }
+        if (count($where)) {
+            $whereStr = sprintf("where %s",
+                implode(" and ", array_map(function ($item) {
+                    return $item[1][0];
+                }, $where))
+            );
+        } else {
+            $whereStr = "";
+        }
+        $paramsWhere = [];
+        foreach ($where as $item) {
+            foreach ($item[1][1]($item[0]) as $param) {
+                $paramsWhere[] = $param;
+            }
+        }
+        return array($whereStr, $paramsWhere);
     }
 
     protected function generateSelectClientLimit($params) {
+        if (array_key_exists("limit", $params) && array_key_exists("offset", $params)) {
+            return array('limit ? offset ?', [
+                (int)($params["limit"]),
+                (int)($params["offset"]),
+            ]);
+        }
+        return array("", []);
     }
 
     public function checkDatabaseAndTables() {

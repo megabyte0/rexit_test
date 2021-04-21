@@ -3,10 +3,6 @@
 
 namespace Server;
 
-
-use Exception;
-use Image\Image;
-
 class MyController {
     protected $db;
 
@@ -17,11 +13,14 @@ class MyController {
     //no views, not needed, pure static or json
     public function getClients($paramsRaw) {
         $params = [];
-        foreach(explode("&",$paramsRaw) as $i) {
-            list($k, $v) = explode("=",$i);
+        foreach (explode("&", $paramsRaw) as $i) {
+            list($k, $v) = explode("=", $i);
             $params[$k] = $v;
         }
-        return $params;
+        return
+//            [$params,
+//            $this->db->generateSelectClientsSql($params)];
+        $this->db->getClients($params);
     }
 
     public function getStatic($fileName) {

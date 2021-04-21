@@ -21,6 +21,35 @@ class DbModel {
         }
     }
 
+    public function execSql(
+        $sql,
+        array $values,
+        $preparedKey,
+        $mysqliFieldTypesStr,
+        $resultNeeded = false
+    ) {
+        $stmt = $this->connection->prepare($sql);
+        $this->prepared[$preparedKey] = $stmt;
+        if ($resultNeeded) {
+            $this->queriesWithResult[$preparedKey] = NULL;
+        }
+
+        if (is_a($stmt, "PDOStatement")) {
+            $res = $this->execPrepared($preparedKey, $values);
+            //var_dump($res);
+        } elseif (is_a($stmt, "mysqli_stmt")) {
+            $res = $this->execPrepared($preparedKey, array_merge(
+                    [$mysqliFieldTypesStr],
+                    $values)
+            );
+        }
+        unset($this->prepared[$preparedKey]);
+        if ($resultNeeded) {
+            unset($this->queriesWithResult[$preparedKey]);
+        }
+        return $res;
+    }
+
     public function execPrepared($key, $params) {
         $stmt = $this->prepared[$key];
         //var_dump($stmt);die;
@@ -120,20 +149,9 @@ class DbModel {
             }
             return $res;
         },$items));
-        $stmt = $this->connection->prepare($sql);
-//        var_dump($stmt);
         $preparedKey = "batchInsert".$table;
-        $this->prepared[$preparedKey] = $stmt;
-
-        if (is_a($stmt, "PDOStatement")) {
-            $res = $this->execPrepared($preparedKey, $values);
-            //var_dump($res);
-        } elseif (is_a($stmt, "mysqli_stmt")) {
-            $this->execPrepared($preparedKey, array_merge(
-                [str_repeat($mysqliFieldTypes,count($items))],
-                $values)
-            );
-        }
-        unset($this->prepared[$preparedKey]);
+        $mysqliFieldTypesStr = str_repeat($mysqliFieldTypes, count($items));
+        $res = $this->execSql($sql, $values, $preparedKey, $mysqliFieldTypesStr);
+        return $res;
     }
 }
