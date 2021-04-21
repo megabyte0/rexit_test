@@ -37,7 +37,11 @@ class Router {
         $this->registerRoute(
             sprintf('/^\\/api\\/data\\/\\?((?:(?:%s)\\&?)*)\\/?$/',$dStr),
             //https://stackoverflow.com/a/13543245
-            array($this->controller, 'getClients')
+            array($this->controller, 'getClientsJson')
+        );
+        $this->registerRoute(
+            sprintf('/^\\/api\\/csv\\/\\?((?:(?:%s)\\&?)*)\\/?$/',$dStr),
+            array($this->controller, 'getClientsCsv')
         );
         $this->registerRoute('/^\\/$/',
             $this->controller->getStatic("./index.html")
@@ -69,20 +73,33 @@ class Router {
     }
 
     public function performCompressionAndEcho($data) {
-        if (is_array($data)) {
+        if (is_a($data,"Server\Response")) {
+            $response = $data;
+            $data = $response->getData();
+        }
+        $contentTypeSent = false;
+        if ((is_array($data)&&!isset($response))||
+            (isset($response)&&$response->isJson())) {
             $data = json_encode($data);
             header('Content-Type: application/json; charset=utf-8');
+            $contentTypeSent = true;
         }
-        $typePng = is_string($data) && substr($data,0,4) === "\x89PNG";
         if (in_array("gzip",
             explode(", ",$_SERVER['HTTP_ACCEPT_ENCODING'])
-        ) && !$typePng) {
+        ) && (!isset($response)||
+            (isset($response)&&$response->isGzipAllowed()))) {
             header('Content-Encoding: gzip');
             $data = gzencode($data);
         }
-        //TODO: extensibility
-        if ($typePng) {
-            header("Content-Type: image/png");
+        if (isset($response)) {
+            if (!$contentTypeSent) {
+                header('Content-Type: '.($response->getContentType()));
+            }
+            if (count($response->getHeaders())) {
+                foreach ($response->getHeaders() as $header) {
+                    header($header);
+                }
+            }
         }
         header("Content-Length: ".(strlen($data)));
         header("Access-Control-Allow-Origin: *");
