@@ -5,6 +5,7 @@ namespace Server;
 
 use mysqli;
 use PDO;
+use Seeder\Seeder;
 
 class MyDbModel extends DbModel {
     #https://stackoverflow.com/a/2533913
@@ -69,6 +70,11 @@ where TABLE_SCHEMA = 'test';",
 
     function __construct(&$connection) {
         parent::__construct($connection);
+        if ($this->isCreateTablesNeeded()) {
+            $this->checkDatabaseAndTables();
+            $this->prepareSqlStatements();
+            (new Seeder($this))->seed();
+        }
     }
 
     public function checkTables() {

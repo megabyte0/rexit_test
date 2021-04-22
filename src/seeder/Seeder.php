@@ -9,6 +9,7 @@ use mysqli;
 class Seeder {
     protected $dbModel;
     protected $tablesRowCount;
+
     function __construct(&$dbModel) {
         $this->dbModel = $dbModel;
     }
@@ -18,7 +19,7 @@ class Seeder {
         //https://forums.docker.com/t/app-container-cannot-access-mysql-container/6660/2
 
         $connection = new PDO('mysql:host=mysql', 'root', '12345678');
-        //$connection = new mysqli('mysql','root','12345678');
+        //$connection = new mysqli('mysql', 'root', '12345678');
         $db = (new \Server\MyDbModel($connection));
         $db->checkDatabaseAndTables();
         $this->dbModel = $db;
@@ -52,7 +53,6 @@ class Seeder {
         $dictionaries = array_map(function ($key) use ($csv) {
             return array_unique(array_column($csv, $key));
         }, ["category" => "category", "gender" => "gender"]);
-        //var_dump($dictionaries);
 
         $this->fillDbDictionaries($dictionaries);
         $ids = $this->getDictionariesDbIds($dictionaries);
@@ -67,10 +67,18 @@ class Seeder {
         }
 
         //the batch insert
-        $this->dbModel->batchInsert($csv, "test.client",
-            ["category_id", "firstname", "lastname", "email", "gender_id", "birthDate"],
-            "isssis"
-        );
+        //https://bugs.mysql.com/bug.php?id=101630
+        //60 000 placeholders at a time
+        $chunkSize = 10000;
+        $csvRecordsCount = count($csv);//100 000
+        for ($i = 0; $i * $chunkSize < $csvRecordsCount; ++$i) {
+            $this->dbModel->batchInsert(
+                array_slice($csv, $chunkSize * $i, $chunkSize),
+                "test.client",
+                ["category_id", "firstname", "lastname", "email", "gender_id", "birthDate"],
+                "isssis"
+            );
+        }
     }
 
     protected function fillDbDictionaries(array $dictionaries) {
